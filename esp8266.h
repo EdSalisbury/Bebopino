@@ -12,6 +12,6 @@ private:
 public:
     Esp8266(int rx_pin, int tx_pin);
     bool Connect(String ssid, String password);
-
+    void SendUdp(String dest_ip, long dest_port, String data);
 };
 

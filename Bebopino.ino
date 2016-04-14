@@ -3,6 +3,7 @@
 
 void setup()
 {
+    Serial.begin(9600);
     Bebopino *bebop = new Bebopino();
 }
 

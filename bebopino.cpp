@@ -2,7 +2,6 @@
 
 Bebopino::Bebopino()
 {
-    Serial.begin(9600);
     Serial.println("Connecting to wifi");
     wifi = new Esp8266(2, 3);
     bool ret = wifi->Connect("edsfamily", "dinah-moe-humm");
@@ -14,6 +13,7 @@ Bebopino::Bebopino()
     {
         Serial.println("Unable to connect!");
     }
+    wifi->SendUdp("192.168.1.116", 55056, "Test Message");
 }
 
 // void PrintHex8(uint8_t *data, uint8_t length) // prints 8-bit data in hex with leading zeroes
