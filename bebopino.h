@@ -58,4 +58,5 @@ public:
     BYTE *CreateAck(network_frame_t frame);
     BYTE *CreatePong(network_frame_t frame);
     void WritePacket(BYTE *packet);
+    BYTE *GenerateFlatTrimCmd();
 };
