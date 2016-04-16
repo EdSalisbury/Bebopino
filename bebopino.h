@@ -17,8 +17,7 @@ typedef struct network_frame
     uint8_t type;
     uint8_t id;
     uint8_t seq;
-    uint32_t frame_size;
-    uint32_t data_size;
+    uint32_t size;
     BYTE* data;
 
 } network_frame_t;
@@ -50,11 +49,13 @@ public:
     void Connect();
     int freeRam();
     BYTE *GeneratePCMD(int flag, int roll, int pitch, int yaw, int gaz);
-    char *GenerateTakeoffCmd();
-    char *GenerateLandingCmd();
+    BYTE *GenerateTakeoffCmd();
+    BYTE *GenerateLandingCmd();
     void ReceiveData(uint8_t mux_id);
-    BYTE *NetworkFrameGenerator(BYTE *cmd, uint32_t length, uint8_t type, uint8_t id);
+    BYTE *NetworkFrameGenerator(BYTE *cmd, uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA, uint8_t id = BD_NET_CD_NONACK_ID);
     network_frame_t NetworkFrameParser(BYTE *data);
+    void PacketReceiver(BYTE *packet);
     BYTE *CreateAck(network_frame_t frame);
     BYTE *CreatePong(network_frame_t frame);
+    void WritePacket(BYTE *packet);
 };
