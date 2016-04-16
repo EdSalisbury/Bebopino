@@ -7,7 +7,7 @@ void PrintHex(unsigned char *cmd, uint32_t length)
     {
         char buffer[3];
         memset(buffer, 0, 3);
-        //sprintf(buffer, "%02X", cmd[x]);
+        sprintf(buffer, "%02X", cmd[x]);
         //Serial.print(String(buffer) + " ");
         //Serial.print(String(cmd[x]) + " ");
         Serial.print(String(buffer) + " ");
@@ -25,10 +25,10 @@ int Bebopino::freeRam()
 
 Bebopino::Bebopino()
 {
-    // Set up sequence numbers
-    seq = new uint8_t[MAX_SEQ];
-    for (uint8_t i = 0 ; i < MAX_SEQ ; ++i)
-        seq[i] = 0;
+    // Set up sequence numbers (TODO: Change to hash table instead)
+    seq = new uint16_t[MAX_ID];
+    for (uint16_t id = 0 ; id < MAX_ID ; ++id)
+        seq[id] = 0;
 
     mySerial = new SoftwareSerial(2, 3, false);
     wifi = new ESP8266(*mySerial);
@@ -52,8 +52,8 @@ Bebopino::Bebopino()
     // Create connections
     // 0 = Receive
     // 1 = Send
-    wifi->listenUDP(MUX_RECV, 4242);
-    wifi->registerUDP(MUX_SEND, "192.168.1.116", 55056);
+    Serial.println(wifi->listenUDP(MUX_RECV, 4242));
+    Serial.println(wifi->registerUDP(MUX_SEND, "192.168.1.116", 55056));
     Serial.println("Connected to WiFi with IP address " + String(wifi->getLocalIP().c_str()));
 }
 
@@ -92,15 +92,15 @@ unsigned char *Bebopino::GeneratePCMD(int flag, int roll, int pitch, int yaw, in
     return buffer;
 }
 
-unsigned char *Bebopino::NetworkFrameGenerator(unsigned char *cmd, uint32_t length)
+BYTE *Bebopino::NetworkFrameGenerator(BYTE *cmd, uint32_t length,
+    uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA,
+    uint8_t id = BD_NET_CD_NONACK_ID)
 {
     uint32_t framelen = length + 7;
-    unsigned char *buffer = new unsigned char[framelen];
-
-    uint8_t id = BD_NET_CD_NONACK_ID;
+    BYTE *buffer = new BYTE[framelen];
 
     memset(buffer, 0, framelen);
-    memcpy(buffer, &ARNETWORKAL_FRAME_TYPE_DATA, 1);
+    memcpy(buffer, &type, 1);
     memcpy(buffer + 1, &id, 1);
     memcpy(buffer + 2, &(seq[id]), 1);
     memcpy(buffer + 3, &framelen, 4);
@@ -117,45 +117,25 @@ unsigned char *Bebopino::NetworkFrameGenerator(unsigned char *cmd, uint32_t leng
 void Bebopino::Connect()
 {
     Serial.println("Connecting");
-    int i = 0;
-    Serial.println("Free RAM: " + String(freeRam()));
-    for (i = 0 ; i < 300 ; ++i)
-    {
-        unsigned char *cmd = GeneratePCMD(1, 0, 0, 0, 0);
-        unsigned char *frame = NetworkFrameGenerator(cmd, 13);
 
-        PrintHex(frame, 20);
-        Serial.println("");
+    BYTE *cmd = GeneratePCMD(1, 0, 0, 0, 0);
+    BYTE *frame = NetworkFrameGenerator(cmd, 13);
 
-        free(frame);
-        free(cmd);
-    }
-    Serial.println("Free RAM: " + String(freeRam()));
+    free(frame);
+    free(cmd);
 }
+
+
 
 void Bebopino::ReceiveData(uint8_t mux_id)
 {
-    //Serial.println("Checking for data");
-    uint8_t buffer[128];
+    BYTE buffer[128];
     memset(buffer, 0, 128);
-    //Serial.println("Free RAM: " + String(freeRam()));
+    uint32_t len = wifi->recv(mux_id, buffer, sizeof(buffer), 100);
 
-
-    // while (millis() - start < timeout) {
-
-    //     if(m_puart->available() > 0) {
-    //         a = m_puart->read();
-    //         data += a;
-    //     }
-    uint32_t len = wifi->recv(&mux_id, buffer, sizeof(buffer), 100);
-
-    //uint32_t ESP8266::recv(uint8_t mux_id, uint8_t *buffer, uint32_t buffer_size, uint32_t timeout)
     if (len > 0)
     {
-        Serial.println("Length: " + String(len));
-        Serial.println((char*)buffer);
-
-        //return (char*)buffer;
+        PrintHex((BYTE *)buffer, len);
     }
     else
     {
@@ -163,4 +143,28 @@ void Bebopino::ReceiveData(uint8_t mux_id)
     }
 }
 
+network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
+{
+    network_frame_t frame;
+    frame.type = data[0];
+    frame.id = data[1];
+    frame.seq = data[2];
+    memcpy(&frame.frame_size, data + 3, 4);
 
+    frame.data_size = frame.frame_size - 7;
+    if (frame.frame_size > 7)
+    {
+        frame.data = (BYTE *) malloc(frame.data_size) + 1;
+        memcpy(&frame.data, data + 7, frame.data_size);
+    }
+
+    return frame;
+}
+
+BYTE *Bebopino::CreateAck(network_frame_t frame)
+{
+    BYTE data[2];
+    memcpy(data, &frame.seq, 1);
+    uint16_t id = frame.id + ARNETWORKAL_MANAGER_DEFAULT_ID_MAX / 2;
+    return NetworkFrameGenerator(data, 2, ARNETWORKAL_FRAME_TYPE_ACK, id);
+}
