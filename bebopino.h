@@ -60,4 +60,5 @@ public:
     void WritePacket(BYTE *packet);
     BYTE *GenerateFlatTrimCmd();
     BYTE *GenerateAllStates();
+    BYTE *GenerateEmergencyCmd();
 };

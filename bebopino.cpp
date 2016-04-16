@@ -100,9 +100,9 @@ BYTE *Bebopino::GenerateFlatTrimCmd()
 {
     BYTE *buffer = new BYTE[5];
     memset(buffer, 0, 5);
-    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_COMMON, 1);
-    memcpy(buffer + 1, &ARCOMMANDS_ID_COMMON_CLASS_COMMON, 1);
-    memcpy(buffer + 2, &ARCOMMANDS_ID_COMMON_COMMON_CMD_ALLSTATES, 2);
+    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
+    memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_FLATTRIM, 2);
     return buffer;
 }
 
@@ -110,9 +110,19 @@ BYTE *Bebopino::GenerateAllStates()
 {
     BYTE *buffer = new BYTE[5];
     memset(buffer, 0, 5);
+    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_COMMON, 1);
+    memcpy(buffer + 1, &ARCOMMANDS_ID_COMMON_CLASS_COMMON, 1);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_COMMON_COMMON_CMD_ALLSTATES, 2);
+    return buffer;
+}
+
+BYTE *Bebopino::GenerateEmergencyCmd()
+{
+    BYTE *buffer = new BYTE[5];
+    memset(buffer, 0, 5);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
-    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_FLATTRIM, 2);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_EMERGENCY, 2);
     return buffer;
 }
 
