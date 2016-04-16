@@ -33,6 +33,10 @@ Bebopino::Bebopino()
     // Initializations
     battery = 0;
     flying_time = 0;
+    pcmd.pitch = 0;
+    pcmd.roll = 0;
+    pcmd.yaw = 0;
+    pcmd.gaz = 0;
 
     mySerial = new SoftwareSerial(2, 3, false);
     wifi = new ESP8266(*mySerial);
@@ -59,6 +63,16 @@ Bebopino::Bebopino()
     Serial.println(wifi->listenUDP(MUX_RECV, 4242));
     Serial.println(wifi->registerUDP(MUX_SEND, "192.168.1.116", 55056));
     Serial.println("Connected to WiFi with IP address " + String(wifi->getLocalIP().c_str()));
+}
+
+uint8_t Bebopino::ValidatePitch(uint8_t val)
+{
+    if (val > 100)
+        return 100;
+    else if (val < 100)
+        return 0;
+
+    return val | 0;
 }
 
 BYTE *Bebopino::GenerateTakeoffCmd()
@@ -124,6 +138,54 @@ BYTE *Bebopino::GenerateEmergencyCmd()
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_EMERGENCY, 2);
     return buffer;
+}
+
+void Bebopino::Up(uint8_t val)
+{
+    this->pcmd.gaz = ValidatePitch(val);
+}
+
+void Bebopino::Down(uint8_t val)
+{
+    this->pcmd.gaz = ValidatePitch(val) * -1;
+}
+
+void Bebopino::Forward(uint8_t val)
+{
+    this->pcmd.pitch = ValidatePitch(val);
+}
+
+void Bebopino::Backward(uint8_t val)
+{
+    this->pcmd.pitch = ValidatePitch(val) * -1;
+}
+
+void Bebopino::Left(uint8_t val)
+{
+    this->pcmd.roll = ValidatePitch(val) * -1;
+}
+
+void Bebopino::Right(uint8_t val)
+{
+    this->pcmd.roll = ValidatePitch(val);
+}
+
+void Bebopino::Clockwise(uint8_t val)
+{
+    this->pcmd.yaw = ValidatePitch(val);
+}
+
+void Bebopino::CounterClockwise(uint8_t val)
+{
+    this->pcmd.yaw = ValidatePitch(val) * -1;
+}
+
+void Bebopino::Stop()
+{
+    this->pcmd.pitch = 0;
+    this->pcmd.roll = 0;
+    this->pcmd.yaw = 0;
+    this->pcmd.gaz = 0;
 }
 
 void Bebopino::Connect()

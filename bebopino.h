@@ -32,6 +32,14 @@ typedef struct
     bool emergency;
 } flying_state_t;
 
+typedef struct
+{
+    int8_t pitch;
+    int8_t roll;
+    int8_t yaw;
+    int8_t gaz;
+} pcmd_t;
+
 class SoftwareSerial;
 
 class Bebopino
@@ -43,6 +51,7 @@ private:
     uint8_t battery;
     flying_state_t flying_state;
     uint64_t flying_time;
+    pcmd_t pcmd;
 
 public:
     Bebopino();
@@ -61,4 +70,14 @@ public:
     BYTE *GenerateFlatTrimCmd();
     BYTE *GenerateAllStates();
     BYTE *GenerateEmergencyCmd();
+    uint8_t ValidatePitch(uint8_t val);
+    void Up(uint8_t val);
+    void Down(uint8_t val);
+    void Forward(uint8_t val);
+    void Backward(uint8_t val);
+    void Left(uint8_t val);
+    void Right(uint8_t val);
+    void Clockwise(uint8_t val);
+    void CounterClockwise(uint8_t val);
+    void Stop();
 };
