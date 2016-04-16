@@ -59,4 +59,5 @@ public:
     BYTE *CreatePong(network_frame_t frame);
     void WritePacket(BYTE *packet);
     BYTE *GenerateFlatTrimCmd();
+    BYTE *GenerateAllStates();
 };

@@ -96,6 +96,26 @@ BYTE *Bebopino::GeneratePCMD(int flag, int roll, int pitch, int yaw, int gaz)
     return buffer;
 }
 
+BYTE *Bebopino::GenerateFlatTrimCmd()
+{
+    BYTE *buffer = new BYTE[5];
+    memset(buffer, 0, 5);
+    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_COMMON, 1);
+    memcpy(buffer + 1, &ARCOMMANDS_ID_COMMON_CLASS_COMMON, 1);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_COMMON_COMMON_CMD_ALLSTATES, 2);
+    return buffer;
+}
+
+BYTE *Bebopino::GenerateAllStates()
+{
+    BYTE *buffer = new BYTE[5];
+    memset(buffer, 0, 5);
+    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
+    memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_FLATTRIM, 2);
+    return buffer;
+}
+
 void Bebopino::Connect()
 {
     Serial.println("Connecting");
@@ -141,8 +161,6 @@ BYTE *Bebopino::NetworkFrameGenerator(BYTE *cmd, uint8_t type, uint8_t id)
 
     return buffer;
 }
-
-
 
 network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
 {
