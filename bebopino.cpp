@@ -95,18 +95,21 @@ BYTE *Bebopino::GenerateLandingCmd()
     return buffer;
 }
 
-BYTE *Bebopino::GeneratePCMD(int flag, int roll, int pitch, int yaw, int gaz)
+BYTE *Bebopino::GeneratePCMD()
 {
     BYTE *buffer = new BYTE[14];
+
+    uint8_t flag = 1;
+
     memset(buffer, 0, 14);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_PCMD, 2);
     memcpy(buffer + 4, &flag, 1);
-    memcpy(buffer + 5, &roll, 1);
-    memcpy(buffer + 6, &pitch, 1);
-    memcpy(buffer + 7, &yaw, 1);
-    memcpy(buffer + 8, &gaz, 1);
+    memcpy(buffer + 5, &this->pcmd.roll, 1);
+    memcpy(buffer + 6, &this->pcmd.pitch, 1);
+    memcpy(buffer + 7, &this->pcmd.yaw, 1);
+    memcpy(buffer + 8, &this->pcmd.gaz, 1);
     return buffer;
 }
 
@@ -192,7 +195,7 @@ void Bebopino::Connect()
 {
     Serial.println("Connecting");
 
-    BYTE *cmd = GeneratePCMD(1, 0, 0, 0, 0);
+    BYTE *cmd = GeneratePCMD();
     BYTE *frame = NetworkFrameGenerator(cmd);
 
     free(frame);

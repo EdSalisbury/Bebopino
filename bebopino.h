@@ -57,11 +57,13 @@ public:
     Bebopino();
     void Connect();
     int freeRam();
-    BYTE *GeneratePCMD(int flag, int roll, int pitch, int yaw, int gaz);
+    BYTE *GeneratePCMD();
     BYTE *GenerateTakeoffCmd();
     BYTE *GenerateLandingCmd();
     void ReceiveData(uint8_t mux_id);
-    BYTE *NetworkFrameGenerator(BYTE *cmd, uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA, uint8_t id = BD_NET_CD_NONACK_ID);
+    BYTE *NetworkFrameGenerator(BYTE *cmd,
+                                uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA,
+                                uint8_t id = BD_NET_CD_NONACK_ID);
     network_frame_t NetworkFrameParser(BYTE *data);
     void PacketReceiver(BYTE *packet);
     BYTE *CreateAck(network_frame_t frame);
