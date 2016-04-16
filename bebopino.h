@@ -23,6 +23,16 @@ typedef struct network_frame
 
 } network_frame_t;
 
+typedef struct
+{
+    bool landed;
+    bool taking_off;
+    bool hovering;
+    bool flying;
+    bool landing;
+    bool emergency;
+} flying_state_t;
+
 class SoftwareSerial;
 
 class Bebopino
@@ -31,6 +41,9 @@ private:
     ESP8266 *wifi;
     uint16_t *seq;
     SoftwareSerial *mySerial;
+    uint8_t battery;
+    flying_state_t flying_state;
+    uint64_t flying_time;
 
 public:
     Bebopino();
@@ -43,4 +56,5 @@ public:
     BYTE *NetworkFrameGenerator(BYTE *cmd, uint32_t length, uint8_t type, uint8_t id);
     network_frame_t NetworkFrameParser(BYTE *data);
     BYTE *CreateAck(network_frame_t frame);
+    BYTE *CreatePong(network_frame_t frame);
 };

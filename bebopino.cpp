@@ -30,6 +30,10 @@ Bebopino::Bebopino()
     for (uint16_t id = 0 ; id < MAX_ID ; ++id)
         seq[id] = 0;
 
+    // Initializations
+    battery = 0;
+    flying_time = 0;
+
     mySerial = new SoftwareSerial(2, 3, false);
     wifi = new ESP8266(*mySerial);
     Serial.begin(9600);
@@ -92,6 +96,33 @@ unsigned char *Bebopino::GeneratePCMD(int flag, int roll, int pitch, int yaw, in
     return buffer;
 }
 
+void Bebopino::Connect()
+{
+    Serial.println("Connecting");
+
+    BYTE *cmd = GeneratePCMD(1, 0, 0, 0, 0);
+    BYTE *frame = NetworkFrameGenerator(cmd, 13);
+
+    free(frame);
+    free(cmd);
+}
+
+void Bebopino::ReceiveData(uint8_t mux_id)
+{
+    BYTE buffer[128];
+    memset(buffer, 0, 128);
+    uint32_t len = wifi->recv(mux_id, buffer, sizeof(buffer), 100);
+
+    if (len > 0)
+    {
+        PrintHex((BYTE *)buffer, len);
+    }
+    else
+    {
+        return;
+    }
+}
+
 BYTE *Bebopino::NetworkFrameGenerator(BYTE *cmd, uint32_t length,
     uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA,
     uint8_t id = BD_NET_CD_NONACK_ID)
@@ -114,34 +145,7 @@ BYTE *Bebopino::NetworkFrameGenerator(BYTE *cmd, uint32_t length,
     return buffer;
 }
 
-void Bebopino::Connect()
-{
-    Serial.println("Connecting");
 
-    BYTE *cmd = GeneratePCMD(1, 0, 0, 0, 0);
-    BYTE *frame = NetworkFrameGenerator(cmd, 13);
-
-    free(frame);
-    free(cmd);
-}
-
-
-
-void Bebopino::ReceiveData(uint8_t mux_id)
-{
-    BYTE buffer[128];
-    memset(buffer, 0, 128);
-    uint32_t len = wifi->recv(mux_id, buffer, sizeof(buffer), 100);
-
-    if (len > 0)
-    {
-        PrintHex((BYTE *)buffer, len);
-    }
-    else
-    {
-        return;
-    }
-}
 
 network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
 {
@@ -167,4 +171,102 @@ BYTE *Bebopino::CreateAck(network_frame_t frame)
     memcpy(data, &frame.seq, 1);
     uint16_t id = frame.id + ARNETWORKAL_MANAGER_DEFAULT_ID_MAX / 2;
     return NetworkFrameGenerator(data, 2, ARNETWORKAL_FRAME_TYPE_ACK, id);
+}
+
+void Bebopino::PacketReceiver(BYTE *packet)
+{
+    network_frame_t frame = NetworkFrameParser(packet);
+
+    if (frame.type == ARNETWORKAL_FRAME_TYPE_DATA_WITH_ACK)
+    {
+        WritePacket(CreateAck(frame));
+    }
+
+    if (frame.id == BD_NET_DC_EVENT_ID ||
+        frame.id == BD_NET_DC_NAVDATA_ID)
+    {
+        uint8_t cmd_project = frame.data[0];
+        uint8_t cmd_class = frame.data[1];
+        uint16_t cmd_id;
+        memcpy(&cmd_id, frame.data + 2, 2);
+
+        switch (cmd_project)
+        {
+            case ARCOMMANDS_ID_PROJECT_COMMON:
+                switch (cmd_class)
+                {
+                    case ARCOMMANDS_ID_COMMON_CLASS_COMMONSTATE:
+                        switch (cmd_id)
+                        {
+                            case ARCOMMANDS_ID_COMMON_COMMONSTATE_CMD_BATTERYSTATECHANGED:
+                                this.battery = frame.data[4];
+                                Serial.println("Battery is at " + String(this.battery));
+                                break;
+                        }
+                        break;
+                }
+                break;
+            case ARCOMMANDS_ID_PROJECT_ARDRONE3:
+                switch (cmd_class)
+                {
+                    case ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTINGSTATE:
+                        switch (cmd_id)
+                        {
+                            case ARCOMMANDS_ID_ARDRONE3_PILOTINGSTATE_CMD_FLATTRIMCHANGED:
+                                break;
+                            case ARCOMMANDS_ID_ARDRONE3_PILOTINGSTATE_CMD_FLYINGSTATECHANGED:
+                                uint32_t state;
+                                memcpy(&state, frame.data + 4, 4);
+                                switch (state)
+                                {
+                                    case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED:
+                                        this.flying_state.landed = true;
+                                        Serial.println("Landed");
+                                        break;
+                                    case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_TAKINGOFF:
+                                        this.flying_state.taking_off = true;
+                                        Serial.println("Taking off");
+                                        break;
+                                    case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
+                                        this.flying_state.hovering = true;
+                                        Serial.println("Hovering");
+                                        break;
+                                    case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
+                                        this.flying_state.flying = true;
+                                        Serial.println("Flying");
+                                        break;
+                                    case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDING:
+                                        this.flying_state.landing = true;
+                                        Serial.println("Landing");
+                                        break;
+                                    case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_EMERGENCY:
+                                        this.flying_state.emergency = true;
+                                        Serial.println("Emergency");
+                                        break;
+                                }
+                                break;
+                        }
+                        break;
+                }
+                break;
+            }
+        }
+
+    if (frame.id == ARNETWORK_MANAGER_INTERNAL_BUFFER_ID_PING)
+    {
+        uint64_t time;
+        memcpy(&time, frame.data, 8);
+        WritePacket(CreatePong(frame));
+    }
+}
+
+void Bebopino::WritePacket(BYTE *packet)
+{
+
+}
+
+BYTE *Bebopino::CreatePong(network_frame_t frame)
+{
+    return NetworkFrameGenerator(frame.data, frame.data_size,
+        ARNETWORKAL_FRAME_TYPE_DATA, ARNETWORK_MANAGER_INTERNAL_BUFFER_ID_PONG);
 }
