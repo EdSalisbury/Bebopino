@@ -1,11 +1,10 @@
-#include <string.h>
-#include "constants.h"
 #include "Arduino.h"
-#include "ESP8266.h"
 #include "SoftwareSerial.h"
+#include "constants.h"
+#include "ESP8266.h"
 
-#define SSID "edsfamily"
-#define PASSWORD "dinah-moe-humm"
+#define SSID "BebopDrone-A024060"
+#define PASSWORD ""
 #define MUX_RECV 0
 #define MUX_SEND 1
 #define MAX_ID 512
@@ -69,9 +68,11 @@ public:
     BYTE *CreateAck(network_frame_t frame);
     BYTE *CreatePong(network_frame_t frame);
     void WritePacket(BYTE *packet);
-    BYTE *GenerateFlatTrimCmd();
-    BYTE *GenerateAllStates();
-    BYTE *GenerateEmergencyCmd();
+    void FlatTrim();
+    void TakeOff();
+    void Land();
+    void GenerateAllStates();
+    void Emergency();
     uint8_t ValidatePitch(uint8_t val);
     void Up(uint8_t val);
     void Down(uint8_t val);

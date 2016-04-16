@@ -1,6 +1,5 @@
 #include "bebopino.h"
 
-
 void PrintHex(unsigned char *cmd, uint32_t length)
 {
     for (uint32_t x = 0 ; x < length ; ++x)
@@ -75,25 +74,6 @@ uint8_t Bebopino::ValidatePitch(uint8_t val)
     return val | 0;
 }
 
-BYTE *Bebopino::GenerateTakeoffCmd()
-{
-    BYTE *buffer = new BYTE[5];
-    memset(buffer, 0, 5);
-    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
-    memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
-    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_TAKEOFF, 2);
-    return buffer;
-}
-
-BYTE *Bebopino::GenerateLandingCmd()
-{
-    BYTE *buffer = new BYTE[5];
-    memset(buffer, 0, 5);
-    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
-    memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
-    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_LANDING, 2);
-    return buffer;
-}
 
 BYTE *Bebopino::GeneratePCMD()
 {
@@ -113,34 +93,54 @@ BYTE *Bebopino::GeneratePCMD()
     return buffer;
 }
 
-BYTE *Bebopino::GenerateFlatTrimCmd()
+void Bebopino::TakeOff()
 {
-    BYTE *buffer = new BYTE[5];
+    BYTE buffer[5];
+    memset(buffer, 0, 5);
+    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
+    memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_TAKEOFF, 2);
+    WritePacket(NetworkFrameGenerator(buffer));
+}
+
+void Bebopino::Land()
+{
+    BYTE buffer[5];
+    memset(buffer, 0, 5);
+    memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
+    memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
+    memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_LANDING, 2);
+    WritePacket(NetworkFrameGenerator(buffer));
+}
+
+void Bebopino::FlatTrim()
+{
+    BYTE buffer[5];
     memset(buffer, 0, 5);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_FLATTRIM, 2);
-    return buffer;
+    WritePacket(NetworkFrameGenerator(buffer));
 }
 
-BYTE *Bebopino::GenerateAllStates()
+void Bebopino::GenerateAllStates()
 {
-    BYTE *buffer = new BYTE[5];
+    BYTE buffer[5];
     memset(buffer, 0, 5);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_COMMON, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_COMMON_CLASS_COMMON, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_COMMON_COMMON_CMD_ALLSTATES, 2);
-    return buffer;
+    WritePacket(NetworkFrameGenerator(buffer));
 }
 
-BYTE *Bebopino::GenerateEmergencyCmd()
+void Bebopino::Emergency()
 {
-    BYTE *buffer = new BYTE[5];
+    BYTE buffer[5];
     memset(buffer, 0, 5);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_EMERGENCY, 2);
-    return buffer;
+    WritePacket(NetworkFrameGenerator(buffer));
 }
 
 void Bebopino::Up(uint8_t val)
@@ -194,12 +194,9 @@ void Bebopino::Stop()
 void Bebopino::Connect()
 {
     Serial.println("Connecting");
-
-    BYTE *cmd = GeneratePCMD();
-    BYTE *frame = NetworkFrameGenerator(cmd);
-
-    free(frame);
-    free(cmd);
+    FlatTrim();
+    GenerateAllStates();
+    Serial.println("Ready");
 }
 
 void Bebopino::ReceiveData(uint8_t mux_id)
@@ -210,7 +207,7 @@ void Bebopino::ReceiveData(uint8_t mux_id)
 
     if (len > 0)
     {
-        PrintHex((BYTE *)buffer, len);
+        PacketReceiver(buffer);
     }
     else
     {
