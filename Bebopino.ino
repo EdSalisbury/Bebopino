@@ -1,8 +1,8 @@
 #include "bebopino.h"
 
 Bebopino *bebop;
-//uint32_t prev_time = 0;
-//const uint32_t interval = 25; // 40hz
+uint32_t prev_time = 0;
+const uint32_t interval = 25; // 40hz
 
 void setup()
 {
@@ -14,15 +14,13 @@ void setup()
 
 void loop()
 {
-//Serial.begin(9600);
-    //Serial.println("Connecting to wifi");
-    //uint32_t time = millis();
-    //if (time - prev_time >= interval)
-    //{
-    //    prev_time = time;
-    //    bebop->WritePacket(bebop->NetworkFrameGenerator(bebop->GeneratePCMD()));
-    //}
-//
+    uint32_t time = millis();
+    if (time - prev_time >= interval)
+    {
+        prev_time = time;
+    //    bebop->GeneratePCMD();
+    }
+
     // Check if there's any new data
-    //bebop->ReceiveData(MUX_RECV);
+    bebop->ReceiveData(MUX_RECV);
 }

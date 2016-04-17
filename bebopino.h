@@ -61,7 +61,7 @@ public:
     int freeRam();
     void GeneratePCMD();
     void ReceiveData(uint8_t mux_id);
-    void NetworkFrameGenerator(BYTE *frame, uint32_t &frame_len, BYTE *data,
+    void NetworkFrameGenerator(BYTE *&frame, uint32_t &frame_len, BYTE *data,
                                 uint32_t data_length,
                                 uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA,
                                 uint8_t id = BD_NET_CD_NONACK_ID);

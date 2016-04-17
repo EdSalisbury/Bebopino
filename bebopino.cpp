@@ -16,7 +16,7 @@ Bebopino::Bebopino()
 {
     //Serial.begin(9600);
 
-    // Set up sequence numbers
+    // Set up sequence se=
     for (uint8_t id = 0 ; id < MAX_ID ; ++id)
     {
         seq[id] = 0;
@@ -88,7 +88,7 @@ void Bebopino::GeneratePCMD()
     memcpy(buffer + 6, &this->pcmd.pitch, 1);
     memcpy(buffer + 7, &this->pcmd.yaw, 1);
     memcpy(buffer + 8, &this->pcmd.gaz, 1);
-    BYTE *frame = {};
+    BYTE *frame;
     uint32_t frame_length;
     NetworkFrameGenerator(frame, frame_length, buffer, length);
     WritePacket(frame, frame_length);
@@ -102,7 +102,7 @@ void Bebopino::TakeOff()
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_TAKEOFF, 2);
-    BYTE *frame = {};
+    BYTE *frame;
     uint32_t frame_length;
     NetworkFrameGenerator(frame, frame_length, buffer, length);
     WritePacket(frame, frame_length);
@@ -116,7 +116,7 @@ void Bebopino::Land()
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_LANDING, 2);
-    BYTE *frame = {};
+    BYTE *frame;
     uint32_t frame_length;
     NetworkFrameGenerator(frame, frame_length, buffer, length);
     WritePacket(frame, frame_length);
@@ -130,7 +130,8 @@ void Bebopino::FlatTrim()
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_FLATTRIM, 2);
-    BYTE *frame = {};
+
+    BYTE *frame;
     uint32_t frame_length;
     NetworkFrameGenerator(frame, frame_length, buffer, length);
     WritePacket(frame, frame_length);
@@ -144,7 +145,7 @@ void Bebopino::GenerateAllStates()
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_COMMON, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_COMMON_CLASS_COMMON, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_COMMON_COMMON_CMD_ALLSTATES, 2);
-    BYTE *frame = {};
+    BYTE *frame;
     uint32_t frame_length;
     NetworkFrameGenerator(frame, frame_length, buffer, length);
     WritePacket(frame, frame_length);
@@ -158,7 +159,7 @@ void Bebopino::Emergency()
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_EMERGENCY, 2);
-    BYTE *frame = {};
+    BYTE *frame;
     uint32_t frame_length;
     NetworkFrameGenerator(frame, frame_length, buffer, length);
     WritePacket(frame, frame_length);
@@ -236,22 +237,35 @@ void Bebopino::ReceiveData(uint8_t mux_id)
     }
 }
 
-void Bebopino::NetworkFrameGenerator(BYTE* frame, uint32_t &frame_length,
+void Bebopino::NetworkFrameGenerator(BYTE *&frame, uint32_t &frame_length,
     BYTE *data, uint32_t data_length, uint8_t type, uint8_t id)
 {
+    uint8_t seq_id = 0;
+    if (id > MAX_ID)
+    {
+        Serial.println("ID " + String(id) + " not found in sequence array");
+    }
+    else
+    {
+        seq_id = seq[id];
+    }
+
     frame_length = data_length + 7;
     frame = new BYTE[frame_length];
     memset(frame, 0, frame_length);
     memcpy(frame, &type, 1);
     memcpy(frame + 1, &id, 1);
-    memcpy(frame + 2, &(seq[id]), 1);
+    memcpy(frame + 2, &seq_id, 1);
     memcpy(frame + 3, &frame_length, 4);
     memcpy(frame + 7, data, data_length);
 
-    if (seq[id] == 255)
-        seq[id] = 0;
-    else
-        seq[id]++;
+    if (seq_id > 0)
+    {
+        if (seq[id] == 255)
+            seq[id] = 0;
+        else
+            seq[id]++;
+    }
 }
 
 network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
@@ -272,8 +286,6 @@ network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
 
     return frame;
 }
-
-
 
 void Bebopino::PacketReceiver(BYTE *packet, uint32_t length)
 {
