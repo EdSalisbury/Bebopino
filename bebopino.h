@@ -4,11 +4,15 @@
 #include "ESP8266.h"
 
 
-//#define SSID "BebopDrone-A024060"
-#define SSID "edsfamily"
-#define PASSWORD "dinah-moe-humm"
+#define SSID "BebopDrone-A024060"
+#define PASSWORD ""
+#define DRONE_IP "192.168.42.1"
+#define D2C_PORT 43210
+#define C2D_PORT 54321
+#define DISC_PORT 44444
 #define MUX_RECV 0
 #define MUX_SEND 1
+#define MUX_DISC 2
 #define MAX_ID 50
 
 typedef unsigned char BYTE;
@@ -20,7 +24,7 @@ typedef struct network_frame
     uint8_t seq;
     uint32_t frame_size;
     uint32_t data_size;
-    BYTE* data;
+    BYTE data[256];
 
 } network_frame_t;
 
@@ -49,15 +53,18 @@ class Bebopino
 private:
     ESP8266 *wifi;
     uint8_t seq[MAX_ID];
+    uint8_t seq_254;
     SoftwareSerial *mySerial;
     uint8_t battery;
     flying_state_t flying_state;
     uint64_t flying_time;
     pcmd_t pcmd;
+    BYTE buf[256];
 
 public:
     Bebopino();
     void Connect();
+    void Discovery();
     int freeRam();
     void GeneratePCMD();
     void ReceiveData(uint8_t mux_id);

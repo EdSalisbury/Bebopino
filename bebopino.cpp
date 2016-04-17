@@ -22,6 +22,8 @@ Bebopino::Bebopino()
         seq[id] = 0;
     }
 
+    seq_254 = 0;
+
     // Initializations
     battery = 0;
     flying_time = 0;
@@ -52,13 +54,13 @@ Bebopino::Bebopino()
     //Create connections
     //0 = Receive
     //1 = Send
-    wifi->listenUDP(MUX_RECV, 43210);
-    if (!wifi->registerUDP(MUX_SEND, F("192.168.42.1"), 54321))
+    wifi->listenUDP(MUX_RECV, D2C_PORT);
+    wifi->registerUDP(MUX_SEND, DRONE_IP, C2D_PORT);
+    if (!wifi->createTCP(MUX_DISC, DRONE_IP, DISC_PORT))
     {
         Serial.println(F("Unable to connect to drone"));
         return;
     }
-
     Serial.println(F("Connected"));
 }
 
@@ -223,13 +225,13 @@ void Bebopino::Connect()
 
 void Bebopino::ReceiveData(uint8_t mux_id)
 {
-    BYTE buffer[64];
-    memset(buffer, 0, 64);
-    uint32_t len = wifi->recv(mux_id, buffer, sizeof(buffer), 100);
+    //BYTE buffer[64];
+    memset(buf, 0, 256);
+    uint32_t len = wifi->recv(mux_id, buf, sizeof(buf), 100);
 
     if (len > 0)
     {
-        PacketReceiver(buffer, len);
+        PacketReceiver(buf, len);
     }
     else
     {
@@ -241,7 +243,11 @@ void Bebopino::NetworkFrameGenerator(BYTE *&frame, uint32_t &frame_length,
     BYTE *data, uint32_t data_length, uint8_t type, uint8_t id)
 {
     uint8_t seq_id = 0;
-    if (id > MAX_ID)
+    if (id == 254)
+    {
+        seq_id = seq_254;
+    }
+    else if (id > MAX_ID)
     {
         Serial.println("ID " + String(id) + " not found in sequence array");
     }
@@ -251,15 +257,22 @@ void Bebopino::NetworkFrameGenerator(BYTE *&frame, uint32_t &frame_length,
     }
 
     frame_length = data_length + 7;
-    frame = new BYTE[frame_length];
-    memset(frame, 0, frame_length);
-    memcpy(frame, &type, 1);
-    memcpy(frame + 1, &id, 1);
-    memcpy(frame + 2, &seq_id, 1);
-    memcpy(frame + 3, &frame_length, 4);
-    memcpy(frame + 7, data, data_length);
 
-    if (seq_id > 0)
+    memset(buf, 0, 256);
+    memcpy(buf, &type, 1);
+    memcpy(buf + 1, &id, 1);
+    memcpy(buf + 2, &seq_id, 1);
+    memcpy(buf + 3, &frame_length, 4);
+    memcpy(buf + 7, data, data_length);
+
+    if (id == 254)
+    {
+        if (seq_254 == 255)
+            seq_254 = 0;
+        else
+            seq_254++;
+    }
+    else if (id < MAX_ID)
     {
         if (seq[id] == 255)
             seq[id] = 0;
@@ -277,10 +290,9 @@ network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
     memcpy(&frame.frame_size, data + 3, 4);
 
     frame.data_size = frame.frame_size - 7;
+    memset(frame.data, 0, 256);
     if (frame.data_size > 0)
     {
-        frame.data = (BYTE *) malloc(frame.data_size);
-        memset(frame.data, 0, frame.data_size);
         memcpy(&frame.data, data + 7, frame.data_size);
     }
 
@@ -289,9 +301,9 @@ network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
 
 void Bebopino::PacketReceiver(BYTE *packet, uint32_t length)
 {
-    Serial.println(F("Received packet: ["));
-    PrintHex(packet, length);
-    Serial.println("]");
+    //Serial.print(F("Received packet: ["));
+    //PrintHex(packet, length);
+    //Serial.println("]");
 
     network_frame_t frame = NetworkFrameParser(packet);
 
@@ -381,23 +393,23 @@ void Bebopino::PacketReceiver(BYTE *packet, uint32_t length)
 
 void Bebopino::WritePacket(BYTE *packet, uint32_t length)
 {
-    Serial.print(F("Sending packet: ["));
-    PrintHex(packet, length);
-    wifi->send(MUX_SEND, packet, length);
-    Serial.println("]");
-    free(packet);
+    //Serial.print(F("Sending packet: ["));
+    //PrintHex(packet, length);
+    wifi->send(MUX_SEND, buf, length);
+    //Serial.println("]");
+    //free(packet);
 }
 
 void Bebopino::CreateAck(network_frame_t frame)
 {
     uint32_t length = 2;
-    BYTE data[length];
-    memcpy(data, &frame.seq, 1);
+    memset(buf, 0, 256);
+    memcpy(buf, &frame.seq, 1);
     uint16_t id = frame.id + ARNETWORKAL_MANAGER_DEFAULT_ID_MAX / 2;
 
     BYTE *new_frame = {};
     uint32_t new_frame_length;
-    NetworkFrameGenerator(new_frame, new_frame_length, data, length, ARNETWORKAL_FRAME_TYPE_ACK, id);
+    NetworkFrameGenerator(new_frame, new_frame_length, buf, length, ARNETWORKAL_FRAME_TYPE_ACK, id);
     WritePacket(new_frame, new_frame_length);
 }
 
@@ -409,4 +421,10 @@ void Bebopino::CreatePong(network_frame_t frame)
         frame.data_size, ARNETWORKAL_FRAME_TYPE_DATA,
         ARNETWORK_MANAGER_INTERNAL_BUFFER_ID_PONG);
     WritePacket(new_frame, new_frame_length);
+}
+
+void Bebopino::Discovery()
+{
+    char data[] = "{\"controller_type\":\"computer\", \"controller_name\":\"bebopino\", \"d2c_port\":\"43210\"}";
+    wifi->send(MUX_DISC, (uint8_t*)data, strlen((char*)data));
 }
