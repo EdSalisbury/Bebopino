@@ -1,33 +1,26 @@
 #include "bebopino.h"
 
-void PrintHex(unsigned char *cmd, uint32_t length)
+
+void PrintHex(BYTE *cmd, uint32_t length)
 {
     for (uint32_t x = 0 ; x < length ; ++x)
     {
         char buffer[3];
         memset(buffer, 0, 3);
         sprintf(buffer, "%02X", cmd[x]);
-        //Serial.print(String(buffer) + " ");
-        //Serial.print(String(cmd[x]) + " ");
         Serial.print(String(buffer) + " ");
-
     }
-}
-
-
-int Bebopino::freeRam()
-{
-  extern int __heap_start, *__brkval;
-  int v;
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 }
 
 Bebopino::Bebopino()
 {
-    // Set up sequence numbers (TODO: Change to hash table instead)
-    seq = new uint16_t[MAX_ID];
-    for (uint16_t id = 0 ; id < MAX_ID ; ++id)
+    //Serial.begin(9600);
+
+    // Set up sequence numbers
+    for (uint8_t id = 0 ; id < MAX_ID ; ++id)
+    {
         seq[id] = 0;
+    }
 
     // Initializations
     battery = 0;
@@ -37,31 +30,36 @@ Bebopino::Bebopino()
     pcmd.yaw = 0;
     pcmd.gaz = 0;
 
-    mySerial = new SoftwareSerial(2, 3, false);
+    mySerial = new SoftwareSerial(2, 3);
+
     wifi = new ESP8266(*mySerial);
-    Serial.begin(9600);
 
     if (!wifi->setOprToStation())
     {
-        Serial.println("Cannot find WiFi module!");
+        Serial.println(F("Cannot find WiFi module!"));
         return;
     }
 
     if (!wifi->joinAP(SSID, PASSWORD))
     {
-        Serial.println("Cannot join WiFi network!");
+        Serial.println(F("Cannot join WiFi network!"));
         return;
     }
 
-    // Enable multiple IP connections
+    //Enable multiple IP connections
     wifi->enableMUX();
 
-    // Create connections
-    // 0 = Receive
-    // 1 = Send
-    Serial.println(wifi->listenUDP(MUX_RECV, 4242));
-    Serial.println(wifi->registerUDP(MUX_SEND, "192.168.1.116", 55056));
-    Serial.println("Connected to WiFi with IP address " + String(wifi->getLocalIP().c_str()));
+    //Create connections
+    //0 = Receive
+    //1 = Send
+    wifi->listenUDP(MUX_RECV, 43210);
+    if (!wifi->registerUDP(MUX_SEND, F("192.168.42.1"), 54321))
+    {
+        Serial.println(F("Unable to connect to drone"));
+        return;
+    }
+
+    Serial.println(F("Connected"));
 }
 
 uint8_t Bebopino::ValidatePitch(uint8_t val)
@@ -75,13 +73,13 @@ uint8_t Bebopino::ValidatePitch(uint8_t val)
 }
 
 
-BYTE *Bebopino::GeneratePCMD()
+void Bebopino::GeneratePCMD()
 {
-    BYTE *buffer = new BYTE[14];
+    uint32_t length = 13;
+    BYTE buffer[length];
 
     uint8_t flag = 1;
-
-    memset(buffer, 0, 14);
+    memset(buffer, 0, length);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_PCMD, 2);
@@ -90,57 +88,80 @@ BYTE *Bebopino::GeneratePCMD()
     memcpy(buffer + 6, &this->pcmd.pitch, 1);
     memcpy(buffer + 7, &this->pcmd.yaw, 1);
     memcpy(buffer + 8, &this->pcmd.gaz, 1);
-    return buffer;
+    BYTE *frame = {};
+    uint32_t frame_length;
+    NetworkFrameGenerator(frame, frame_length, buffer, length);
+    WritePacket(frame, frame_length);
 }
 
 void Bebopino::TakeOff()
 {
-    BYTE buffer[5];
-    memset(buffer, 0, 5);
+    uint32_t length = 4;
+    BYTE buffer[length];
+    memset(buffer, 0, length);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_TAKEOFF, 2);
-    WritePacket(NetworkFrameGenerator(buffer));
+    BYTE *frame = {};
+    uint32_t frame_length;
+    NetworkFrameGenerator(frame, frame_length, buffer, length);
+    WritePacket(frame, frame_length);
 }
 
 void Bebopino::Land()
 {
-    BYTE buffer[5];
-    memset(buffer, 0, 5);
+    uint32_t length = 4;
+    BYTE buffer[length];
+    memset(buffer, 0, length);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_LANDING, 2);
-    WritePacket(NetworkFrameGenerator(buffer));
+    BYTE *frame = {};
+    uint32_t frame_length;
+    NetworkFrameGenerator(frame, frame_length, buffer, length);
+    WritePacket(frame, frame_length);
 }
 
 void Bebopino::FlatTrim()
 {
-    BYTE buffer[5];
-    memset(buffer, 0, 5);
+    uint32_t length = 4;
+    BYTE buffer[length];
+    memset(buffer, 0, length);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_FLATTRIM, 2);
-    WritePacket(NetworkFrameGenerator(buffer));
+    BYTE *frame = {};
+    uint32_t frame_length;
+    NetworkFrameGenerator(frame, frame_length, buffer, length);
+    WritePacket(frame, frame_length);
 }
 
 void Bebopino::GenerateAllStates()
 {
-    BYTE buffer[5];
-    memset(buffer, 0, 5);
+    uint32_t length = 4;
+    BYTE buffer[length];
+    memset(buffer, 0, length);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_COMMON, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_COMMON_CLASS_COMMON, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_COMMON_COMMON_CMD_ALLSTATES, 2);
-    WritePacket(NetworkFrameGenerator(buffer));
+    BYTE *frame = {};
+    uint32_t frame_length;
+    NetworkFrameGenerator(frame, frame_length, buffer, length);
+    WritePacket(frame, frame_length);
 }
 
 void Bebopino::Emergency()
 {
-    BYTE buffer[5];
-    memset(buffer, 0, 5);
+    uint32_t length = 4;
+    BYTE buffer[length];
+    memset(buffer, 0, length);
     memcpy(buffer, &ARCOMMANDS_ID_PROJECT_ARDRONE3, 1);
     memcpy(buffer + 1, &ARCOMMANDS_ID_ARDRONE3_CLASS_PILOTING, 1);
     memcpy(buffer + 2, &ARCOMMANDS_ID_ARDRONE3_PILOTING_CMD_EMERGENCY, 2);
-    WritePacket(NetworkFrameGenerator(buffer));
+    BYTE *frame = {};
+    uint32_t frame_length;
+    NetworkFrameGenerator(frame, frame_length, buffer, length);
+    WritePacket(frame, frame_length);
 }
 
 void Bebopino::Up(uint8_t val)
@@ -193,21 +214,21 @@ void Bebopino::Stop()
 
 void Bebopino::Connect()
 {
-    Serial.println("Connecting");
+    Serial.println(F("Connecting to Drone"));
     FlatTrim();
     GenerateAllStates();
-    Serial.println("Ready");
+    Serial.println(F("Ready"));
 }
 
 void Bebopino::ReceiveData(uint8_t mux_id)
 {
-    BYTE buffer[128];
-    memset(buffer, 0, 128);
+    BYTE buffer[64];
+    memset(buffer, 0, 64);
     uint32_t len = wifi->recv(mux_id, buffer, sizeof(buffer), 100);
 
     if (len > 0)
     {
-        PacketReceiver(buffer);
+        PacketReceiver(buffer, len);
     }
     else
     {
@@ -215,23 +236,22 @@ void Bebopino::ReceiveData(uint8_t mux_id)
     }
 }
 
-BYTE *Bebopino::NetworkFrameGenerator(BYTE *cmd, uint8_t type, uint8_t id)
+void Bebopino::NetworkFrameGenerator(BYTE* frame, uint32_t &frame_length,
+    BYTE *data, uint32_t data_length, uint8_t type, uint8_t id)
 {
-    uint32_t framelen = strlen((char*)cmd) + 8;
-    BYTE *buffer = new BYTE[framelen];
-    memset(buffer, 0, framelen);
-    memcpy(buffer, &type, 1);
-    memcpy(buffer + 1, &id, 1);
-    memcpy(buffer + 2, &(seq[id]), 1);
-    memcpy(buffer + 3, &framelen, 4);
-    memcpy(buffer + 7, cmd, strlen((char*)cmd));
+    frame_length = data_length + 7;
+    frame = new BYTE[frame_length];
+    memset(frame, 0, frame_length);
+    memcpy(frame, &type, 1);
+    memcpy(frame + 1, &id, 1);
+    memcpy(frame + 2, &(seq[id]), 1);
+    memcpy(frame + 3, &frame_length, 4);
+    memcpy(frame + 7, data, data_length);
 
     if (seq[id] == 255)
         seq[id] = 0;
     else
         seq[id]++;
-
-    return buffer;
 }
 
 network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
@@ -240,34 +260,32 @@ network_frame_t Bebopino::NetworkFrameParser(BYTE *data)
     frame.type = data[0];
     frame.id = data[1];
     frame.seq = data[2];
-    memcpy(&frame.size, data + 3, 4);
+    memcpy(&frame.frame_size, data + 3, 4);
 
-    uint32_t data_size = frame.size - 7;
-    if (frame.size > 7)
+    frame.data_size = frame.frame_size - 7;
+    if (frame.data_size > 0)
     {
-        frame.data = (BYTE *) malloc(data_size) + 1;
-        memset(frame.data, 0, data_size + 1);
-        memcpy(&frame.data, data + 7, data_size);
+        frame.data = (BYTE *) malloc(frame.data_size);
+        memset(frame.data, 0, frame.data_size);
+        memcpy(&frame.data, data + 7, frame.data_size);
     }
 
     return frame;
 }
 
-BYTE *Bebopino::CreateAck(network_frame_t frame)
-{
-    BYTE data[2];
-    memcpy(data, &frame.seq, 1);
-    uint16_t id = frame.id + ARNETWORKAL_MANAGER_DEFAULT_ID_MAX / 2;
-    return NetworkFrameGenerator(data, ARNETWORKAL_FRAME_TYPE_ACK, id);
-}
 
-void Bebopino::PacketReceiver(BYTE *packet)
+
+void Bebopino::PacketReceiver(BYTE *packet, uint32_t length)
 {
+    Serial.println(F("Received packet: ["));
+    PrintHex(packet, length);
+    Serial.println("]");
+
     network_frame_t frame = NetworkFrameParser(packet);
 
     if (frame.type == ARNETWORKAL_FRAME_TYPE_DATA_WITH_ACK)
     {
-        WritePacket(CreateAck(frame));
+        CreateAck(frame);
     }
 
     if (frame.id == BD_NET_DC_EVENT_ID ||
@@ -301,6 +319,7 @@ void Bebopino::PacketReceiver(BYTE *packet)
                         switch (cmd_id)
                         {
                             case ARCOMMANDS_ID_ARDRONE3_PILOTINGSTATE_CMD_FLATTRIMCHANGED:
+                                Serial.println(F("FlatTrim Updated"));
                                 break;
                             case ARCOMMANDS_ID_ARDRONE3_PILOTINGSTATE_CMD_FLYINGSTATECHANGED:
                                 uint32_t state;
@@ -309,27 +328,27 @@ void Bebopino::PacketReceiver(BYTE *packet)
                                 {
                                     case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDED:
                                         this->flying_state.landed = true;
-                                        Serial.println("Landed");
+                                        Serial.println(F("Landed"));
                                         break;
                                     case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_TAKINGOFF:
                                         this->flying_state.taking_off = true;
-                                        Serial.println("Taking off");
+                                        Serial.println(F("Taking off"));
                                         break;
                                     case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_HOVERING:
                                         this->flying_state.hovering = true;
-                                        Serial.println("Hovering");
+                                        Serial.println(F("Hovering"));
                                         break;
                                     case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_FLYING:
                                         this->flying_state.flying = true;
-                                        Serial.println("Flying");
+                                        Serial.println(F("Flying"));
                                         break;
                                     case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_LANDING:
                                         this->flying_state.landing = true;
-                                        Serial.println("Landing");
+                                        Serial.println(F("Landing"));
                                         break;
                                     case ARCOMMANDS_ARDRONE3_PILOTINGSTATE_FLYINGSTATECHANGED_STATE_EMERGENCY:
                                         this->flying_state.emergency = true;
-                                        Serial.println("Emergency");
+                                        Serial.println(F("Emergency"));
                                         break;
                                 }
                                 break;
@@ -344,17 +363,38 @@ void Bebopino::PacketReceiver(BYTE *packet)
     {
         uint64_t time;
         memcpy(&time, frame.data, 8);
-        WritePacket(CreatePong(frame));
+        CreatePong(frame);
     }
 }
 
-void Bebopino::WritePacket(BYTE *packet)
+void Bebopino::WritePacket(BYTE *packet, uint32_t length)
 {
-    wifi->send(MUX_SEND, packet, strlen((char*)packet));
+    Serial.print(F("Sending packet: ["));
+    PrintHex(packet, length);
+    wifi->send(MUX_SEND, packet, length);
+    Serial.println("]");
     free(packet);
 }
 
-BYTE *Bebopino::CreatePong(network_frame_t frame)
+void Bebopino::CreateAck(network_frame_t frame)
 {
-    return NetworkFrameGenerator(frame.data, ARNETWORKAL_FRAME_TYPE_DATA, ARNETWORK_MANAGER_INTERNAL_BUFFER_ID_PONG);
+    uint32_t length = 2;
+    BYTE data[length];
+    memcpy(data, &frame.seq, 1);
+    uint16_t id = frame.id + ARNETWORKAL_MANAGER_DEFAULT_ID_MAX / 2;
+
+    BYTE *new_frame = {};
+    uint32_t new_frame_length;
+    NetworkFrameGenerator(new_frame, new_frame_length, data, length, ARNETWORKAL_FRAME_TYPE_ACK, id);
+    WritePacket(new_frame, new_frame_length);
+}
+
+void Bebopino::CreatePong(network_frame_t frame)
+{
+    BYTE *new_frame = {};
+    uint32_t new_frame_length;
+    NetworkFrameGenerator(new_frame, new_frame_length, frame.data,
+        frame.data_size, ARNETWORKAL_FRAME_TYPE_DATA,
+        ARNETWORK_MANAGER_INTERNAL_BUFFER_ID_PONG);
+    WritePacket(new_frame, new_frame_length);
 }

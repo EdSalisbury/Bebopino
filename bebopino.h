@@ -3,11 +3,13 @@
 #include "constants.h"
 #include "ESP8266.h"
 
-#define SSID "BebopDrone-A024060"
-#define PASSWORD ""
+
+//#define SSID "BebopDrone-A024060"
+#define SSID "edsfamily"
+#define PASSWORD "dinah-moe-humm"
 #define MUX_RECV 0
 #define MUX_SEND 1
-#define MAX_ID 512
+#define MAX_ID 50
 
 typedef unsigned char BYTE;
 
@@ -16,7 +18,8 @@ typedef struct network_frame
     uint8_t type;
     uint8_t id;
     uint8_t seq;
-    uint32_t size;
+    uint32_t frame_size;
+    uint32_t data_size;
     BYTE* data;
 
 } network_frame_t;
@@ -45,7 +48,7 @@ class Bebopino
 {
 private:
     ESP8266 *wifi;
-    uint16_t *seq;
+    uint8_t seq[MAX_ID];
     SoftwareSerial *mySerial;
     uint8_t battery;
     flying_state_t flying_state;
@@ -56,18 +59,17 @@ public:
     Bebopino();
     void Connect();
     int freeRam();
-    BYTE *GeneratePCMD();
-    BYTE *GenerateTakeoffCmd();
-    BYTE *GenerateLandingCmd();
+    void GeneratePCMD();
     void ReceiveData(uint8_t mux_id);
-    BYTE *NetworkFrameGenerator(BYTE *cmd,
+    void NetworkFrameGenerator(BYTE *frame, uint32_t &frame_len, BYTE *data,
+                                uint32_t data_length,
                                 uint8_t type = ARNETWORKAL_FRAME_TYPE_DATA,
                                 uint8_t id = BD_NET_CD_NONACK_ID);
     network_frame_t NetworkFrameParser(BYTE *data);
-    void PacketReceiver(BYTE *packet);
-    BYTE *CreateAck(network_frame_t frame);
-    BYTE *CreatePong(network_frame_t frame);
-    void WritePacket(BYTE *packet);
+    void PacketReceiver(BYTE *packet, uint32_t length);
+    void CreateAck(network_frame_t frame);
+    void CreatePong(network_frame_t frame);
+    void WritePacket(BYTE *packet, uint32_t length);
     void FlatTrim();
     void TakeOff();
     void Land();
